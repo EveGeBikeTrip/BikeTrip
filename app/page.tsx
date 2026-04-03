@@ -159,7 +159,7 @@ export default function HomePage() {
                 key={exp.id}
                 expense={exp}
                 onDelete={() => handleDelete(exp.id)}
-                onClick={() => router.push(`/expenses/${exp.id}/`)}
+                onClick={() => router.push(`/expense/?id=${exp.id}`)}
               />
             ))}
           </div>
