@@ -23,7 +23,7 @@ function AddExpenseContent() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'other'>('cash');
   const [photoDataUrl, setPhotoDataUrl] = useState<string | undefined>(undefined);
   const [receiptText, setReceiptText] = useState('');
-
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(!!editId);
@@ -52,14 +52,34 @@ function AddExpenseContent() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const MAX = 800;
         const scale = img.width > MAX ? MAX / img.width : 1;
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
         canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setPhotoDataUrl(canvas.toDataURL('image/jpeg', 0.7));
+        const compressed = canvas.toDataURL('image/jpeg', 0.7);
+        setPhotoDataUrl(compressed); // preview local
+        setPhotoUploading(true);
+        try {
+          const formData = new FormData();
+          formData.append('file', compressed);
+          formData.append('upload_preset', 'EveGeBikeTrip');
+          const res = await fetch('https://api.cloudinary.com/v1_1/dvzwxekny/image/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.secure_url) {
+            setPhotoDataUrl(data.secure_url); // remplace le base64 par l'URL Cloudinary
+          }
+        } catch (err) {
+          console.error('Upload Cloudinary échoué:', err);
+          // garde le base64 local en fallback
+        } finally {
+          setPhotoUploading(false);
+        }
       };
       img.src = ev.target?.result as string;
     };
@@ -243,8 +263,16 @@ function AddExpenseContent() {
             <img
               src={photoDataUrl}
               alt="Reçu"
-              className="w-full max-h-40 object-cover rounded-xl"
+              className={`w-full max-h-40 object-cover rounded-xl ${photoUploading ? 'opacity-50' : ''}`}
             />
+            {photoUploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl">
+                <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700">
+                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                  Upload...
+                </div>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setPhotoDataUrl(undefined)}
